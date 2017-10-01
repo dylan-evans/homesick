@@ -2,6 +2,8 @@
 import os
 import re
 import argparse
+import logging
+from logging import debug, info, error
 
 import yaml
 import pystache
@@ -12,9 +14,9 @@ CONFPATH = os.path.join(DATAPATH, "config.yaml")
 
 
 def main(cmd_line):
+    logging.basicConfig(level=logging.INFO)
     with open(cmd_line.config) as src:
         conf = yaml.load(src)
-        print conf
 
     os.chdir(cmd_line.data)
 
@@ -41,6 +43,7 @@ def sync_handler(cmd_line, conf):
             sftp = client.open_sftp()
 
             for local, remote in conf["files"].items():
+                info("Uploading '%s' as '%s'", local, remote)
                 with open(local) as src:
                     with sftp.open(remote.replace("~", home), mode="w") as dst:
                         stdout = client.exec_command("echo $HOME")[1]
@@ -48,7 +51,7 @@ def sync_handler(cmd_line, conf):
                         dst.write(pystache.render(src.read(), ctx))
             client.close()
         except:
-            print "Update failed for '{}'".format(host)
+            error("Update failed for '%s'", host)
 
 
 def get_arguments():
