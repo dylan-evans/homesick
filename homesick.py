@@ -27,7 +27,9 @@ def main(cmd_line):
 
 
 def sync_handler(cmd_line, conf):
-
+    """
+    Sync the local homesick data with remotes.
+    """
     client = SSHClient()
     client.set_missing_host_key_policy(WarningPolicy())
 
@@ -50,27 +52,29 @@ def sync_handler(cmd_line, conf):
             error("Connection failed to '%s'", host)
             continue
 
-        home = url.path if url.path else "./"
-
-        fileset = copy(conf.get("files", {}).get("all", {}))
-        for tag in tags:
-            fileset.update(conf.get("files", {}).get(tag, {}))
+        fileset = get_fileset(conf, tags)
 
         sftp = client.open_sftp()
         for local, remote in fileset.items():
             info("Uploading '%s' as '%s'", local, remote)
             with open(local) as src:
                 with sftp.open(remote, mode="w") as dst:
-                    stdout = client.exec_command("echo $HOME")[1]
-                    home = stdout.read().strip()
                     dst.write(pystache.render(src.read(), ctx))
         client.close()
+
+
+def get_fileset(conf, tags):
+    fileset = copy(conf.get("files", {}).get("all", {}))
+    for tag in tags:
+        fileset.update(conf.get("files", {}).get(tag, {}))
+    return fileset
 
 
 def get_arguments():
     main_parser = argparse.ArgumentParser(description="Sync home directories.")
     main_parser.add_argument("--config", "-c", default=CONFPATH)
-    main_parser.add_argument("--path", "-p", default=os.getenv("HOMESICKPATH", DATAPATH))
+    main_parser.add_argument("--path", "-p", default=os.getenv("HOMESICKPATH",
+                             DATAPATH))
 
     subparsers = main_parser.add_subparsers()
 
